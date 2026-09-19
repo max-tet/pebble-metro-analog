@@ -1,0 +1,32 @@
+{
+  "name": "iso-analog",
+  "author": "Max Tettenborn",
+  "version": "1.0.0",
+  "keywords": [
+    "pebble-app"
+  ],
+  "private": true,
+  "dependencies": {
+    "@moddable/pebbleproxy": "^0.2.0"
+  },
+  "pebble": {
+    "displayName": "ISO Analog",
+    "uuid": "fd1a660c-7524-480c-a110-e68c66fc539c",
+    "projectType": "moddable",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "emery"
+    ],
+    "capabilities": [
+      "location"
+    ],
+    "watchapp": {
+      "watchface": true
+    },
+    "messageKeys": [],
+    "resources": {
+      "media": []
+    }
+  }
+}
