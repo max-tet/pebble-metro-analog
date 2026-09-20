@@ -53,7 +53,7 @@ as the job is green. No emulator runs in CI, so the listing keeps the screenshot
 the first publish; to replace them, run `pebble publish` locally.
 
 The job authenticates through a repository secret named `PEBBLE_CREDENTIALS`, whose value is
-the whole of `~/.local/share/pebble-sdk/firebase_oauth_storage.json` as `pebble login` writes
+the whole of `~/.local/share/pebble-sdk/oauth_firebase/firebase_oauth_storage.json` as `pebble login` writes
 it. That file holds a long-lived refresh token for the Pebble developer account. If the job
 ever fails on authentication, log in again and replace the secret.
 

@@ -37,8 +37,8 @@ jobs:
             echo "The PEBBLE_CREDENTIALS secret is empty or missing." >&2
             exit 1
           fi
-          mkdir -p "${HOME}/.local/share/pebble-sdk"
-          printf '%s' "${PEBBLE_CREDENTIALS}" > "${HOME}/.local/share/pebble-sdk/firebase_oauth_storage.json"
+          mkdir -p "${HOME}/.local/share/pebble-sdk/oauth_firebase"
+          printf '%s' "${PEBBLE_CREDENTIALS}" > "${HOME}/.local/share/pebble-sdk/oauth_firebase/firebase_oauth_storage.json"
 
       - name: Publish
         env:
