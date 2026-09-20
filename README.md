@@ -83,6 +83,11 @@ mkdir -p .claude/skills && cp -r /tmp/pws/.claude/skills/pebble-watchface .claud
 
 Built against commit `363bac9c8e672d62400fbf1b6e3bd4c8e0faca45`.
 
+## Support
+
+The watchface is free and stays free. If it earns a place on your wrist, there is a tip jar at
+https://ko-fi.com/max_tee.
+
 ## Licence
 
 MIT, see [LICENSE](LICENSE).
