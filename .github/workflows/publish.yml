@@ -1,0 +1,51 @@
+name: Publish to the appstore
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the tag against package.json
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          manifest="$(python3 -c 'import json; print(json.load(open("package.json"))["version"])')"
+          if [ "$tag" != "$manifest" ]; then
+            echo "Tag ${GITHUB_REF_NAME} ships a .pbw that says ${manifest}." >&2
+            exit 1
+          fi
+
+      - uses: astral-sh/setup-uv@v10.1.0
+
+      - name: Install the Pebble tool and SDK
+        run: |
+          uv tool install pebble-tool --python 3.13
+          echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+
+      - name: Install the SDK
+        run: pebble sdk install latest
+
+      - name: Restore the appstore credentials
+        env:
+          PEBBLE_CREDENTIALS: ${{ secrets.PEBBLE_CREDENTIALS }}
+        run: |
+          if [ -z "${PEBBLE_CREDENTIALS}" ]; then
+            echo "The PEBBLE_CREDENTIALS secret is empty or missing." >&2
+            exit 1
+          fi
+          mkdir -p "${HOME}/.local/share/pebble-sdk"
+          printf '%s' "${PEBBLE_CREDENTIALS}" > "${HOME}/.local/share/pebble-sdk/firebase_oauth_storage.json"
+
+      - name: Publish
+        env:
+          NOTES: ${{ github.event.release.body }}
+        run: |
+          pebble publish \
+            --non-interactive \
+            --no-gif-all-platforms \
+            --is-published \
+            --release-notes "${NOTES:-${GITHUB_REF_NAME}}"

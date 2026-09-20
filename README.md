@@ -36,6 +36,27 @@ To put it on a watch, open the built `.pbw` from `build/` on your phone, or foll
 [cloud relay route](https://developer.repebble.com/faqs/): enable Dev Connect in the Pebble
 app under Devices → ⋯, then `pebble login` and `pebble install --cloudpebble`.
 
+## Releasing
+
+The first publish has to happen by hand, because creating the appstore record needs a
+description and at least one screenshot:
+
+```
+pebble login
+pebble publish
+```
+
+Every release after that is the pipeline's job. `.github/workflows/publish.yml` runs on a
+published GitHub release: it fails if the tag disagrees with the version in `package.json`,
+then builds and uploads the `.pbw` with `--is-published`, so the new version is live as soon
+as the job is green. No emulator runs in CI, so the listing keeps the screenshots taken during
+the first publish; to replace them, run `pebble publish` locally.
+
+The job authenticates through a repository secret named `PEBBLE_CREDENTIALS`, whose value is
+the whole of `~/.local/share/pebble-sdk/firebase_oauth_storage.json` as `pebble login` writes
+it. That file holds a long-lived refresh token for the Pebble developer account. If the job
+ever fails on authentication, log in again and replace the secret.
+
 ## How the weather works
 
 The phone does the network, not the watch. `src/pkjs/index.js` runs in the Pebble phone app,
