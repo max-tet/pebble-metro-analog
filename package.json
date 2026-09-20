@@ -1,5 +1,5 @@
 {
-  "name": "iso-analog",
+  "name": "metro-analog",
   "author": "Max Tettenborn",
   "version": "1.0.0",
   "keywords": [
@@ -8,7 +8,7 @@
   "private": true,
   "dependencies": {},
   "pebble": {
-    "displayName": "ISO Analog",
+    "displayName": "Metro Analog",
     "uuid": "fd1a660c-7524-480c-a110-e68c66fc539c",
     "projectType": "moddable",
     "sdkVersion": "3",
