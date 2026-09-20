@@ -97,6 +97,7 @@ function drawWeather() {
     const cx = x + w / 2;
     if (!wx) {
         centered("--°", fontValue, WHITE, cx, y + 26);
+        centered(weather.status() ?? "...", fontLabel, t.tint, cx, y + 52);
         return;
     }
     drawIcon(render, Math.round(cx), y + 20, WHITE, t.bg, wx.code, wx.isDay);
@@ -160,6 +161,10 @@ try {
 weather.onUpdate(data => {
     wx = data;
     draw();
+});
+
+weather.onStatus(() => {
+    if (!wx) draw();
 });
 
 watch.addEventListener("minutechange", draw);

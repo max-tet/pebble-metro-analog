@@ -6,9 +6,7 @@
     "pebble-app"
   ],
   "private": true,
-  "dependencies": {
-    "@moddable/pebbleproxy": "^0.2.0"
-  },
+  "dependencies": {},
   "pebble": {
     "displayName": "ISO Analog",
     "uuid": "fd1a660c-7524-480c-a110-e68c66fc539c",
@@ -24,7 +22,18 @@
     "watchapp": {
       "watchface": true
     },
-    "messageKeys": [],
+    "messageKeys": [
+      "TEMP",
+      "TMAX",
+      "TMIN",
+      "UV",
+      "UVMAX",
+      "RAIN",
+      "CODE",
+      "ISDAY",
+      "ERR",
+      "REQ"
+    ],
     "resources": {
       "media": []
     }
