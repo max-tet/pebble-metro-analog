@@ -8,9 +8,6 @@ weather, rain probability for the next six hours, the UV index and the watch bat
 ![The watchface](docs/screenshot.png)
 
 When there is no weather data the tile says why, rather than going blank:
-
-![No data](docs/screenshot-no-data.png)
-
 `no link` means the watch cannot reach the phone, `no net` means the phone cannot reach the
 weather API, `timeout` means neither callback came back.
 
