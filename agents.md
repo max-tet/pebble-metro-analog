@@ -130,13 +130,16 @@ the right word rather than going blank.
 
 ## Releasing
 
-Bump `version` in `package.json`, then publish a GitHub release whose tag matches
-(`v1.0.1` or `1.0.1`). The workflow fails the job when they disagree, builds, and uploads with
+Bump `version` in `package.json` directly on `main` while preparing the release, never in a
+PR. Then publish a GitHub release whose tag matches (`v1.0.1` or `1.0.1`). The workflow fails the job when they disagree, builds, and uploads with
 `--is-published`, so the store updates itself.
 
-CI deliberately does not touch the store screenshots, which is why it needs no emulator. After
-a visual change, refresh them by hand with `pebble publish --replace-screenshots`, which is
-irreversible through the CLI.
+The store screenshot is `docs/screenshot.png`, the same file the README shows. The job
+uploads it as `emery_screenshot.png`, because the tool reads the platform from the start of the
+file name, and replaces whatever the listing had. No emulator runs in CI. After a visual
+change, retake that file on the emulator with weather data and commit it before the release.
+If the store rejects the image, the tool retries without it and the job still goes green; the
+log then says `Screenshot validation failed`.
 
 The job authenticates from the `PEBBLE_CREDENTIALS` secret, whose value is the whole of
 `~/.local/share/pebble-sdk/oauth_firebase/firebase_oauth_storage.json` as `pebble login` writes

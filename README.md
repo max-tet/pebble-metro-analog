@@ -46,8 +46,8 @@ pebble publish
 Every release after that is the pipeline's job. `.github/workflows/publish.yml` runs on a
 published GitHub release: it fails if the tag disagrees with the version in `package.json`,
 then builds and uploads the `.pbw` with `--is-published`, so the new version is live as soon
-as the job is green. No emulator runs in CI, so the listing keeps the screenshots taken during
-the first publish; to replace them, run `pebble publish` locally.
+as the job is green. It also replaces the store screenshot with `docs/screenshot.png`, the
+image at the top of this README, so retake and commit that file after a visual change.
 
 The job authenticates through a repository secret named `PEBBLE_CREDENTIALS`, whose value is
 the whole of `~/.local/share/pebble-sdk/oauth_firebase/firebase_oauth_storage.json` as `pebble login` writes
