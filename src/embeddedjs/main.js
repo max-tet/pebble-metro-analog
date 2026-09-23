@@ -83,12 +83,34 @@ function drawClock(now) {
 
 function drawDate(now) {
     const t = TILE.date;
-    const [x, y, w] = tileBase(t, "DATE");
+    const [x, y, w] = tileBase(t, null);
     const cx = x + w / 2;
     const md = `${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    centered(md, fontValue, WHITE, cx, y + 20);
-    centered(String(now.getFullYear()), fontLabel, WHITE, cx, y + 46);
-    centered(`W${String(isoWeek(now)).padStart(2, "0")}`, fontLabel, WHITE, cx, y + 58);
+    centered(String(now.getFullYear()), fontValue, WHITE, cx, y + 4);
+    centered(md, fontValue, WHITE, cx, y + 28);
+    centered(`W${String(isoWeek(now)).padStart(2, "0")}`, fontLabel, WHITE, cx, y + 56);
+}
+
+function arrow(x, y, up) {
+    const stemY = up ? y + 3 : y;
+    render.fillRectangle(WHITE, x + 2, stemY, 1, 6);
+    for (let i = 0; i < 3; i++)
+        render.fillRectangle(WHITE, x + 2 - i, up ? y + i : y + 8 - i, 1 + 2 * i, 1);
+}
+
+function drawHighLow(cx, y) {
+    const low = String(wx.tmin);
+    const high = String(wx.tmax);
+    const lw = render.getTextWidth(low, fontLabel);
+    const hw = render.getTextWidth(high, fontLabel);
+    let px = Math.round(cx - (lw + hw + 18) / 2);
+    render.drawText(low, fontLabel, WHITE, px, y);
+    px += lw + 3;
+    arrow(px, y + 5, false);
+    px += 7;
+    arrow(px, y + 5, true);
+    px += 8;
+    render.drawText(high, fontLabel, WHITE, px, y);
 }
 
 function drawWeather() {
@@ -102,7 +124,7 @@ function drawWeather() {
     }
     drawIcon(render, Math.round(cx), y + 20, WHITE, t.bg, wx.code, wx.isDay);
     centered(`${wx.temp}°`, fontValue, WHITE, cx, y + 34);
-    centered(`${wx.tmax}/${wx.tmin}`, fontLabel, WHITE, cx, y + 58);
+    drawHighLow(cx, y + 58);
 }
 
 function drawRain() {
@@ -115,10 +137,23 @@ function drawRain() {
 
 function drawUv() {
     const t = TILE.uv;
-    const [x, y, w] = tileBase(t, "UV");
-    const cx = x + w / 2;
-    centered(wx ? String(wx.uv) : "--", fontBig, WHITE, cx, y + 20);
-    centered(wx ? `max ${wx.uvMax}` : "", fontLabel, WHITE, cx, y + 52);
+    const [x, y, w] = tileBase(t, null);
+    const cx = Math.round(x + w / 2);
+    const cy = y + 29;
+    const rays = wx ? wx.uvMax : 0;
+    for (let i = 0; i < rays; i++) {
+        const a = i * 2 * Math.PI / rays;
+        const s = Math.sin(a);
+        const c = Math.cos(a);
+        const thick = i < wx.uv;
+        const outer = thick ? 26 : 20;
+        render.drawLine(
+            Math.round(cx + s * 17), Math.round(cy - c * 17),
+            Math.round(cx + s * outer), Math.round(cy - c * outer), WHITE, thick ? 3 : 2);
+    }
+    render.drawCircle(WHITE, cx, cy, 14, 0, 360);
+    centered(wx ? String(wx.uv) : "--", fontValue, t.bg, cx, cy - 14);
+    if (wx) centered(`max ${wx.uvMax}`, fontLabel, WHITE, cx, y + 57);
 }
 
 function drawBatt() {

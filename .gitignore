@@ -5,3 +5,4 @@ node_modules/
 .lock-waf_*
 .claude/skills/
 screenshots/
+.worktrees/
