@@ -44,8 +44,11 @@ jobs:
         env:
           NOTES: ${{ github.event.release.body }}
         run: |
+          cp docs/screenshot.png emery_screenshot.png
           pebble publish \
             --non-interactive \
             --no-gif-all-platforms \
+            --screenshots emery_screenshot.png \
+            --replace-screenshots \
             --is-published \
             --release-notes "${NOTES:-${GITHUB_REF_NAME}}"
