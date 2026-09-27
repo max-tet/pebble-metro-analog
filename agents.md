@@ -70,10 +70,20 @@ fills a pie slice. Rings and arcs are built from `fillRectangle` and `drawLine`.
 those names; changing one without the other fails silently, because a missing key reads as
 `undefined`.
 
+**Health reads the wrong way round from what its guide says.** `Health.metric.get()` and
+`Health.metric.query()` are documented as equivalent for cumulative metrics. They are not. On
+firmware 4.32, `get("step count")` returns 0 and `query({ metric: "step count" })` returns the
+day's total, while `get("heart rate")` returns the reading and `query` returns 0. Use `query`
+for anything cumulative and `get` for anything instantaneous, and read the value rather than
+trusting `accessible()`: the emulated emery board reports the heart rate monitor as
+`supported: false` and still delivers readings, so gating on availability blanks the tile.
+`pebble/health` needs no `manifest.json` entry; the rule below is about this project's own
+modules, not the SDK's.
+
 ## Layout
 
-The grid is three by three with a one pixel gutter. The clock occupies the top-left four
-cells; the other five tiles are date, weather, rain, UV and battery. Geometry lives in `TILE`
+The grid is three by three with a one pixel gutter. The clock occupies the top-right four
+cells; the other five tiles are date, weather, rain, UV and fitness. Geometry lives in `TILE`
 at the top of `main.js`, and the clock's centre, numeral radius and hand gap derive from it:
 
 ```
@@ -127,6 +137,11 @@ a live Open-Meteo call made at the same moment, not against what they were last 
 
 For the failure paths, point the phone side at an unreachable host and confirm the face shows
 the right word rather than going blank.
+
+For steps and heart rate, `pebble emu-steps <n>` and `pebble emu-heart-rate <bpm>` inject
+values into the emulator. Steps appear on the next redraw. The heart rate does not: it is the
+filtered metric, and it needs roughly half a dozen injections of the same value before it
+moves, so a single one looks like a broken read.
 
 ## Releasing
 
