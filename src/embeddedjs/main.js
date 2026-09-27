@@ -160,7 +160,7 @@ function drawUv() {
 // Small glyphs as run-length rows: each pair is a start offset and a width.
 // They are not built from drawCircle, because Poco fills a circle as a pie
 // slice and two overlapping slices leave a seam down the middle at this size.
-const FOOT = [[2, 5], [1, 7], [0, 9], [0, 9], [1, 8], [2, 7], [3, 6], [3, 5], [2, 6], [1, 7], [1, 7], [2, 5]];
+const WALK = [[3, 2], [3, 2], [], [2, 4], [1, 5], [2, 4], [2, 3], [2, 4], [2, 2, 5, 2], [1, 2, 6, 2], [1, 2, 7, 2], [0, 2, 7, 2]];
 const HEART = [[1, 3, 5, 3], [0, 9], [0, 9], [0, 9], [1, 7], [2, 5], [3, 3], [4, 1]];
 
 function glyph(rows, x, y) {
@@ -180,7 +180,7 @@ function drawFit() {
     const [x, y, w] = tileBase(t, null);
     const cx = x + w / 2;
     const count = steps === null ? "--" : (steps >= 10000 ? `${Math.round(steps / 1000)}k` : String(steps));
-    fitRow(cx, y + 10, FOOT, 9, 6, count);
+    fitRow(cx, y + 10, WALK, 9, 6, count);
     fitRow(cx, y + 40, HEART, 9, 8, bpm ? String(bpm) : "--");
 }
 

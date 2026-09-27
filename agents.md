@@ -67,7 +67,7 @@ coordinates and looks like working weather for the wrong place.
 fills a pie slice. Rings and arcs are built from `fillRectangle` and `drawLine`. Two of those
 slices overlapping also leave a seam of background pixels along the join, which is invisible
 at icon size in a mockup and obvious on the watch, so glyphs below about fifteen pixels are
-defined as run-length rows in `FOOT` and `HEART` and filled a row at a time.
+defined as run-length rows in `WALK` and `HEART` and filled a row at a time.
 
 **`messageKeys` in `package.json` is the contract.** Both `weather.js` and `index.js` refer to
 those names; changing one without the other fails silently, because a missing key reads as
