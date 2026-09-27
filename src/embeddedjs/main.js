@@ -157,23 +157,31 @@ function drawUv() {
     if (wx) centered(`max ${wx.uvMax}`, fontLabel, WHITE, cx, y + 57);
 }
 
-function heart(x, y) {
-    render.drawCircle(WHITE, x + 3, y + 3, 3, 0, 360);
-    render.drawCircle(WHITE, x + 8, y + 3, 3, 0, 360);
-    for (let i = 0; i < 6; i++)
-        render.fillRectangle(WHITE, x + i, y + 5 + i, 11 - 2 * i, 1);
+// Small glyphs as run-length rows: each pair is a start offset and a width.
+// They are not built from drawCircle, because Poco fills a circle as a pie
+// slice and two overlapping slices leave a seam down the middle at this size.
+const FOOT = [[2, 5], [1, 7], [0, 9], [0, 9], [1, 8], [2, 7], [3, 6], [3, 5], [2, 6], [1, 7], [1, 7], [2, 5]];
+const HEART = [[1, 3, 5, 3], [0, 9], [0, 9], [0, 9], [1, 7], [2, 5], [3, 3], [4, 1]];
+
+function glyph(rows, x, y) {
+    for (let i = 0; i < rows.length; i++)
+        for (let j = 0; j < rows[i].length; j += 2)
+            render.fillRectangle(WHITE, x + rows[i][j], y + i, rows[i][j + 1], 1);
+}
+
+function fitRow(cx, y, rows, gw, gy, text) {
+    const left = Math.round(cx - (gw + 4 + render.getTextWidth(text, fontValue)) / 2);
+    glyph(rows, left, y + gy);
+    render.drawText(text, fontValue, WHITE, left + gw + 4, y);
 }
 
 function drawFit() {
     const t = TILE.fit;
-    const [x, y, w] = tileBase(t, "STEPS");
+    const [x, y, w] = tileBase(t, null);
     const cx = x + w / 2;
-    centered(steps === null ? "--" : (steps >= 10000 ? `${Math.round(steps / 1000)}k` : String(steps)),
-        fontValue, WHITE, cx, y + 18);
-    const pulse = bpm ? String(bpm) : "--";
-    const px = Math.round(cx - (render.getTextWidth(pulse, fontValue) + 15) / 2);
-    heart(px, y + 52);
-    render.drawText(pulse, fontValue, WHITE, px + 15, y + 46);
+    const count = steps === null ? "--" : (steps >= 10000 ? `${Math.round(steps / 1000)}k` : String(steps));
+    fitRow(cx, y + 10, FOOT, 9, 6, count);
+    fitRow(cx, y + 40, HEART, 9, 8, bpm ? String(bpm) : "--");
 }
 
 function draw(event) {
