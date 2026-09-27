@@ -69,6 +69,13 @@ slices overlapping also leave a seam of background pixels along the join, which 
 at icon size in a mockup and obvious on the watch, so glyphs below about fifteen pixels are
 defined as run-length rows in `WALK` and `HEART` and filled a row at a time.
 
+The heap has little room for more of them. A throwaway build carrying four candidate glyph
+tables and a routine to draw them side by side died at launch with `memory full`, on a VM that
+already reports failed slot allocations at startup. Compare glyph designs by compositing them
+into a screenshot rather than by shipping them all to the watch; a run-length row filled with
+`fillRectangle` is white pixels on a flat tile, so the composite is exact, and it can be
+checked against a real render before it is trusted.
+
 **`messageKeys` in `package.json` is the contract.** Both `weather.js` and `index.js` refer to
 those names; changing one without the other fails silently, because a missing key reads as
 `undefined`.
