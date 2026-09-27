@@ -12,12 +12,12 @@ const BLACK = mk(0, 0, 0);
 const WHITE = mk(255, 255, 255);
 
 const TILE = {
-    clock:   { rect: [1, 1, 132, 150] },
-    date:    { rect: [135, 1, 64, 74],   bg: mk(0, 85, 170),  tint: mk(85, 170, 255) },
-    weather: { rect: [135, 77, 64, 74],  bg: mk(170, 85, 0),  tint: mk(255, 170, 85) },
-    rain:    { rect: [1, 153, 65, 74],   bg: mk(0, 170, 170), tint: mk(85, 255, 255) },
-    uv:      { rect: [68, 153, 65, 74],  bg: mk(85, 0, 170),  tint: mk(170, 85, 255) },
-    batt:    { rect: [135, 153, 64, 74], bg: mk(0, 170, 85),  tint: mk(85, 255, 170) }
+    clock:   { rect: [67, 1, 132, 150] },
+    date:    { rect: [1, 1, 64, 74],     bg: mk(0, 85, 170),  tint: mk(85, 170, 255) },
+    weather: { rect: [1, 77, 64, 74],    bg: mk(170, 85, 0),  tint: mk(255, 170, 85) },
+    rain:    { rect: [1, 153, 64, 74],   bg: mk(0, 170, 170), tint: mk(85, 255, 255) },
+    uv:      { rect: [67, 153, 65, 74],  bg: mk(85, 0, 170),  tint: mk(170, 85, 255) },
+    batt:    { rect: [134, 153, 65, 74], bg: mk(0, 170, 85),  tint: mk(85, 255, 170) }
 };
 
 const fontLabel = new render.Font("Gothic-Regular", 14);
