@@ -1,5 +1,5 @@
 import Poco from "commodetto/Poco";
-import Battery from "embedded:sensor/Battery";
+import Health from "pebble/health";
 import { drawIcon } from "icons";
 import * as weather from "weather";
 
@@ -12,12 +12,12 @@ const BLACK = mk(0, 0, 0);
 const WHITE = mk(255, 255, 255);
 
 const TILE = {
-    clock:   { rect: [1, 1, 132, 150] },
-    date:    { rect: [135, 1, 64, 74],   bg: mk(0, 85, 170),  tint: mk(85, 170, 255) },
-    weather: { rect: [135, 77, 64, 74],  bg: mk(170, 85, 0),  tint: mk(255, 170, 85) },
-    rain:    { rect: [1, 153, 65, 74],   bg: mk(0, 170, 170), tint: mk(85, 255, 255) },
-    uv:      { rect: [68, 153, 65, 74],  bg: mk(85, 0, 170),  tint: mk(170, 85, 255) },
-    batt:    { rect: [135, 153, 64, 74], bg: mk(0, 170, 85),  tint: mk(85, 255, 170) }
+    clock:   { rect: [67, 1, 132, 150] },
+    date:    { rect: [1, 1, 64, 74],     bg: mk(0, 85, 170),  tint: mk(85, 170, 255) },
+    weather: { rect: [1, 77, 64, 74],    bg: mk(170, 85, 0),  tint: mk(255, 170, 85) },
+    rain:    { rect: [1, 153, 64, 74],   bg: mk(0, 170, 170), tint: mk(85, 255, 255) },
+    uv:      { rect: [67, 153, 65, 74],  bg: mk(85, 0, 170),  tint: mk(170, 85, 255) },
+    fit:     { rect: [134, 153, 65, 74], bg: mk(0, 170, 85),  tint: mk(85, 255, 170) }
 };
 
 const fontLabel = new render.Font("Gothic-Regular", 14);
@@ -42,7 +42,8 @@ for (let i = 1; i <= 12; i++) {
 
 let lastDate = new Date();
 let wx = weather.cached();
-let battPct = 0;
+let steps = null;
+let bpm = null;
 
 function isoWeek(d) {
     const t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -156,15 +157,31 @@ function drawUv() {
     if (wx) centered(`max ${wx.uvMax}`, fontLabel, WHITE, cx, y + 57);
 }
 
-function drawBatt() {
-    const t = TILE.batt;
-    const [x, y, w] = tileBase(t, "BATT");
+// Small glyphs as run-length rows: each pair is a start offset and a width.
+// They are not built from drawCircle, because Poco fills a circle as a pie
+// slice and two overlapping slices leave a seam down the middle at this size.
+const WALK = [[3, 2], [3, 2], [], [2, 4], [1, 5], [2, 4], [2, 3], [2, 4], [2, 2, 5, 2], [1, 2, 6, 2], [1, 2, 7, 2], [0, 2, 7, 2]];
+const HEART = [[1, 3, 5, 3], [0, 9], [0, 9], [0, 9], [1, 7], [2, 5], [3, 3], [4, 1]];
+
+function glyph(rows, x, y) {
+    for (let i = 0; i < rows.length; i++)
+        for (let j = 0; j < rows[i].length; j += 2)
+            render.fillRectangle(WHITE, x + rows[i][j], y + i, rows[i][j + 1], 1);
+}
+
+function fitRow(cx, y, rows, gw, gy, text) {
+    const left = Math.round(cx - (gw + 4 + render.getTextWidth(text, fontValue)) / 2);
+    glyph(rows, left, y + gy);
+    render.drawText(text, fontValue, WHITE, left + gw + 4, y);
+}
+
+function drawFit() {
+    const t = TILE.fit;
+    const [x, y, w] = tileBase(t, null);
     const cx = x + w / 2;
-    centered(`${battPct}%`, fontValue, WHITE, cx, y + 22);
-    const bw = w - 16;
-    render.fillRectangle(t.tint, x + 8, y + 54, bw, 8);
-    render.fillRectangle(t.bg, x + 9, y + 55, bw - 2, 6);
-    render.fillRectangle(WHITE, x + 9, y + 55, Math.round((bw - 2) * battPct / 100), 6);
+    const count = steps === null ? "--" : (steps >= 10000 ? `${Math.round(steps / 1000)}k` : String(steps));
+    fitRow(cx, y + 10, WALK, 9, 6, count);
+    fitRow(cx, y + 40, HEART, 9, 8, bpm ? String(bpm) : "--");
 }
 
 function draw(event) {
@@ -177,21 +194,35 @@ function draw(event) {
     drawWeather();
     drawRain();
     drawUv();
-    drawBatt();
+    drawFit();
     render.end();
 }
 
-let battery = null;
-try {
-    battery = new Battery({
-        onSample() {
-            battPct = Math.round(this.sample().percent);
-            draw();
-        }
-    });
-    battPct = Math.round(battery.sample().percent);
-} catch (e) {
+// The two accessors are not interchangeable, whatever the guide says: a
+// cumulative metric reads 0 from get() and its daily total from query(),
+// while heart rate is the other way round. Availability is deliberately not
+// consulted, because the emulated board reports the heart rate monitor as
+// unsupported while still delivering readings.
+function reading(read) {
+    try {
+        const value = read();
+        return Number.isFinite(value) ? value : null;
+    } catch (e) {
+        return null;
+    }
 }
+
+function readHealth() {
+    steps = reading(() => Health.metric.query({ metric: "step count" }));
+    bpm = reading(() => Health.metric.get("heart rate")) || null;
+}
+
+readHealth();
+
+watch.addEventListener("health", () => {
+    readHealth();
+    draw();
+});
 
 weather.onUpdate(data => {
     wx = data;

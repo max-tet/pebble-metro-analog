@@ -1,9 +1,10 @@
 # Metro Analog
 
 An analog watchface for the Pebble Time 2, laid out as a three-by-three tile grid in the
-manner of Windows Phone's Metro. The clock takes the top-left four cells with numerals for
+manner of Windows Phone's Metro. The clock takes the top-right four cells with numerals for
 all twelve hours; the remaining five tiles carry the ISO date with week number, current
-weather, rain probability for the next six hours, the UV index and the watch battery.
+weather, rain probability for the next six hours, the UV index and today's step count with
+the current heart rate.
 
 ![The watchface](docs/screenshot.png)
 
@@ -54,6 +55,13 @@ the whole of `~/.local/share/pebble-sdk/oauth_firebase/firebase_oauth_storage.js
 it. That file holds a long-lived refresh token for the Pebble developer account. If the job
 ever fails on authentication, log in again and replace the secret.
 
+## How the fitness tile works
+
+Steps and heart rate come from Pebble Health through Alloy's `pebble/health` module, which
+needs SDK 4.33 and firmware 4.32, and returns nothing unless the user has Pebble Health
+enabled in the mobile app. The heart rate is the filtered one, so it lags a change by several
+samples. Either value shows `--` when the watch has none.
+
 ## How the weather works
 
 The phone does the network, not the watch. `src/pkjs/index.js` runs in the Pebble phone app,
@@ -76,11 +84,11 @@ a failure is indistinguishable from silence.
 
 | | | |
 |---|---|---|
-| clock | clock | date |
-| clock | clock | weather |
-| rain | UV | battery |
+| date | clock | clock |
+| weather | clock | clock |
+| rain | UV | fitness |
 
-Columns are 67, 67 and 66 pixels, rows are 76 each, and tiles are inset by one pixel so the
+Columns are 66, 67 and 67 pixels, rows are 76 each, and tiles are inset by one pixel so the
 black background shows through as a two-pixel gutter. The dial sits at radius 63 with the
 numerals on a ring at 52; the hands start nine pixels out from a centre left deliberately
 empty, the hour seven pixels thick and the minute three.
