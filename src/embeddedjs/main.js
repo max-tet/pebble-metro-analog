@@ -12,20 +12,20 @@ const BLACK = mk(0, 0, 0);
 const WHITE = mk(255, 255, 255);
 
 const TILE = {
-    clock:   { rect: [67, 1, 132, 150] },
-    date:    { rect: [1, 1, 64, 74],     bg: mk(0, 85, 170),  tint: mk(85, 170, 255) },
-    weather: { rect: [1, 77, 64, 74],    bg: mk(170, 85, 0),  tint: mk(255, 170, 85) },
-    rain:    { rect: [1, 153, 64, 74],   bg: mk(0, 170, 170), tint: mk(85, 255, 255) },
-    uv:      { rect: [67, 153, 65, 74],  bg: mk(85, 0, 170),  tint: mk(170, 85, 255) },
-    fit:     { rect: [134, 153, 65, 74], bg: mk(0, 170, 85),  tint: mk(85, 255, 170) }
+    clock:   { x: 67,  y: 1,   w: 132, h: 150 },
+    date:    { x: 1,   y: 1,   w: 64,  h: 74, bg: mk(0, 85, 170),  tint: mk(85, 170, 255) },
+    weather: { x: 1,   y: 77,  w: 64,  h: 74, bg: mk(170, 85, 0),  tint: mk(255, 170, 85) },
+    rain:    { x: 1,   y: 153, w: 64,  h: 74, bg: mk(0, 170, 170), tint: mk(85, 255, 255) },
+    uv:      { x: 67,  y: 153, w: 65,  h: 74, bg: mk(85, 0, 170),  tint: mk(170, 85, 255) },
+    fit:     { x: 134, y: 153, w: 65,  h: 74, bg: mk(0, 170, 85),  tint: mk(85, 255, 170) }
 };
 
 const fontLabel = new render.Font("Gothic-Regular", 14);
 const fontValue = new render.Font("Gothic-Bold", 24);
 const fontBig = new render.Font("Gothic-Bold", 28);
 
-const CX = TILE.clock.rect[0] + TILE.clock.rect[2] / 2;
-const CY = TILE.clock.rect[1] + TILE.clock.rect[3] / 2;
+const CX = TILE.clock.x + TILE.clock.w / 2;
+const CY = TILE.clock.y + TILE.clock.h / 2;
 const R_NUM = 52;
 const HAND_GAP = 9;
 
@@ -47,10 +47,8 @@ function centered(str, font, color, cx, y) {
 }
 
 function tileBase(t, label) {
-    const [x, y, w, h] = t.rect;
-    render.fillRectangle(t.bg, x, y, w, h);
-    if (label) render.drawText(label, fontLabel, WHITE, x + 4, y + 3);
-    return [x, y, w, h];
+    render.fillRectangle(t.bg, t.x, t.y, t.w, t.h);
+    if (label) render.drawText(label, fontLabel, WHITE, t.x + 4, t.y + 3);
 }
 
 function hand(angle, inner, outer, thickness) {
@@ -62,7 +60,7 @@ function hand(angle, inner, outer, thickness) {
 }
 
 function drawClock(now) {
-    const [x, y, w, h] = TILE.clock.rect;
+    const { x, y, w, h } = TILE.clock;
     render.fillRectangle(BLACK, x, y, w, h);
     for (let i = 1; i <= 12; i++) {
         const a = i * Math.PI / 6;
@@ -78,7 +76,8 @@ function drawClock(now) {
 
 function drawDate(now) {
     const t = TILE.date;
-    const [x, y, w] = tileBase(t, null);
+    tileBase(t, null);
+    const { x, y, w } = t;
     const cx = x + w / 2;
     const md = `${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     centered(String(now.getFullYear()), fontValue, WHITE, cx, y + 4);
@@ -110,7 +109,8 @@ function drawHighLow(cx, y) {
 
 function drawWeather() {
     const t = TILE.weather;
-    const [x, y, w] = tileBase(t, null);
+    tileBase(t, null);
+    const { x, y, w } = t;
     const cx = x + w / 2;
     if (!wx) {
         centered("--°", fontValue, WHITE, cx, y + 26);
@@ -124,7 +124,8 @@ function drawWeather() {
 
 function drawRain() {
     const t = TILE.rain;
-    const [x, y, w] = tileBase(t, "RAIN");
+    tileBase(t, "RAIN");
+    const { x, y, w } = t;
     const cx = x + w / 2;
     centered(wx ? `${wx.rain}%` : "--", fontBig, WHITE, cx, y + 20);
     centered("6h", fontLabel, WHITE, cx, y + 52);
@@ -132,7 +133,8 @@ function drawRain() {
 
 function drawUv() {
     const t = TILE.uv;
-    const [x, y, w] = tileBase(t, null);
+    tileBase(t, null);
+    const { x, y, w } = t;
     const cx = Math.round(x + w / 2);
     const cy = y + 29;
     const rays = wx ? wx.uvMax : 0;
@@ -205,15 +207,16 @@ function glyph(art, x, y) {
     }
 }
 
-function fitRow(cx, y, rows, gw, gy, text) {
+function fitRow(cx, y, art, gw, gy, text) {
     const left = Math.round(cx - (gw + 4 + render.getTextWidth(text, fontValue)) / 2);
-    glyph(rows, left, y + gy);
+    glyph(art, left, y + gy);
     render.drawText(text, fontValue, WHITE, left + gw + 4, y);
 }
 
 function drawFit() {
     const t = TILE.fit;
-    const [x, y, w] = tileBase(t, null);
+    tileBase(t, null);
+    const { x, y, w } = t;
     const cx = x + w / 2;
     const count = steps === null ? "--" : (steps >= 10000 ? `${Math.round(steps / 1000)}k` : String(steps));
     fitRow(cx, y + 10, WALK, 9, 6, count);
