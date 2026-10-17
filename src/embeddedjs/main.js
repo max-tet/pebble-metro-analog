@@ -29,17 +29,6 @@ const CY = TILE.clock.rect[1] + TILE.clock.rect[3] / 2;
 const R_NUM = 52;
 const HAND_GAP = 9;
 
-const NUMERALS = [];
-for (let i = 1; i <= 12; i++) {
-    const a = i * Math.PI / 6;
-    const label = String(i);
-    NUMERALS.push({
-        label,
-        x: Math.round(CX + Math.sin(a) * R_NUM - render.getTextWidth(label, fontLabel) / 2),
-        y: Math.round(CY - Math.cos(a) * R_NUM - fontLabel.height / 2)
-    });
-}
-
 let lastDate = new Date();
 let wx = weather.cached();
 let steps = null;
@@ -75,8 +64,13 @@ function hand(angle, inner, outer, thickness) {
 function drawClock(now) {
     const [x, y, w, h] = TILE.clock.rect;
     render.fillRectangle(BLACK, x, y, w, h);
-    for (let i = 0; i < NUMERALS.length; i++)
-        render.drawText(NUMERALS[i].label, fontLabel, WHITE, NUMERALS[i].x, NUMERALS[i].y);
+    for (let i = 1; i <= 12; i++) {
+        const a = i * Math.PI / 6;
+        const label = String(i);
+        render.drawText(label, fontLabel, WHITE,
+            Math.round(CX + Math.sin(a) * R_NUM - render.getTextWidth(label, fontLabel) / 2),
+            Math.round(CY - Math.cos(a) * R_NUM - fontLabel.height / 2));
+    }
     const minutes = now.getMinutes();
     hand((now.getHours() % 12 + minutes / 60) * Math.PI / 6, HAND_GAP, 30, 7);
     hand(minutes * Math.PI / 30, HAND_GAP, 43, 3);
