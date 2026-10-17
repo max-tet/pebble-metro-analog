@@ -63,18 +63,48 @@ an explicit call at startup as well: the second request overlaps the first, and 
 location sensor throws on the second caller, which silently falls back to the default
 coordinates and looks like working weather for the wrong place.
 
+On the emulator that immediate request never reaches the phone: AppMessage is not writable yet,
+`message.write` throws `not writable`, and `request` records `no link`. Weather at launch
+comes from the phone's own `ready` handler.
+
 **Poco has no stroked-circle primitive.** `drawCircle(color, cx, cy, r, startAngle, endAngle)`
 fills a pie slice. Rings and arcs are built from `fillRectangle` and `drawLine`. Two of those
 slices overlapping also leave a seam of background pixels along the join, which is invisible
 at icon size in a mockup and obvious on the watch, so glyphs below about fifteen pixels are
-defined as run-length rows in `WALK` and `HEART` and filled a row at a time.
+defined as one bitmask per pixel row in `WALK` and `HEART` and filled a run at a time.
 
-The heap has little room for more of them. A throwaway build carrying four candidate glyph
-tables and a routine to draw them side by side died at launch with `memory full`, on a VM that
-already reports failed slot allocations at startup. Compare glyph designs by compositing them
-into a screenshot rather than by shipping them all to the watch; a run-length row filled with
-`fillRectangle` is white pixels on a flat tile, so the composite is exact, and it can be
-checked against a real render before it is trusted.
+Compare glyph designs by compositing them into a screenshot rather than by shipping them all
+to the watch; a run filled with `fillRectangle` is white pixels on a flat tile, so the
+composite is exact, and it can be checked against a real render before it is trusted.
+
+**The JS heap is 32 KB and most of it is spoken for.** With no creation record, `mdbl.c` gets
+one static 32768-byte block, from the kernel heap when it has room: 6 KB of stack, then slots
+growing down and chunks growing up. When slots run short, a collection hands them whatever the
+chunk side is not using at that moment, and nothing ever moves the other way. The first slot
+shortage at startup therefore caps chunks at what happened to be live then, which is why a
+small addition can flip a working face into `memory full` at launch. The face now holds about 13.4 KB of slots
+and 2.7 KB of chunks after a collection, and on the emulator boots with six extra nine-row
+glyph tables but not seven; before the heap was trimmed, one extra table killed it. What
+things cost, measured on this build:
+
+- A function declaration: about 150 bytes, plus about 24 bytes for every module-level name it
+  uses. An arrow function is 48 bytes cheaper, because a declaration gets a prototype object.
+- An array: two slots plus 16 bytes per element. A nested table of small arrays adds up fast.
+- A string literal: nothing to hold, but every property access on a string primitive,
+  `s.length` and `s.charCodeAt(i)` included, allocates a String wrapper object. Do not walk a
+  string character by character in anything that runs on every draw.
+
+To measure instead of guessing, temporarily set `.flags = kModdableCreationFlagLogInstrumentation`
+in a `ModdableCreationRecord` in `mdbl.c`; `pebble logs` then prints chunk and slot use once a
+second. Add `import Debug from "debug"` and call `Debug.gc()` before reading a number, or it
+includes garbage. Neither change belongs in a commit.
+
+The record also takes `stack`, `slot` and `chunk` sizes. When their sum exceeds 32768, the
+firmware drops the shared static block and allocates fixed slot and chunk heaps separately:
+stack and slots from the kernel heap while a 32 KB allowance lasts, chunks and anything beyond
+it from the app heap. On the emulator, 6144, 24576
+and 8192 left 78 KB of app heap free and fit ten extra glyph tables. That is the lever if the
+face outgrows the default, but it has not been tried on a real watch.
 
 **`messageKeys` in `package.json` is the contract.** Both `weather.js` and `index.js` refer to
 those names; changing one without the other fails silently, because a missing key reads as
