@@ -77,6 +77,19 @@ Compare glyph designs by compositing them into a screenshot rather than by shipp
 to the watch; a run filled with `fillRectangle` is white pixels on a flat tile, so the
 composite is exact, and it can be checked against a real render before it is trusted.
 
+**`render.origin(x, y)` pushes onto a stack; pop it with `render.origin()`, not
+`render.origin(0, 0)`.** The zero-argument form is the pop. Calling it with explicit `(0, 0)`
+instead pushes a second, zero-offset translation and leaves the stack one deep at the end of
+every frame. The firmware asserts `clip or origin not popped`, core-dumps and reboots, and
+boots straight back into the same draw call, so the watch never comes back up on its own.
+`pebble screenshot` and `pebble logs` then fail with a `WatchVersion` timeout on every
+subsequent connection, which looks exactly like an emulator or environment problem and is not
+one; `--qemu_logs` on `pebble install` streams the raw firmware console and shows the assert
+directly. Separately, `drawCircle` throws `TypeError: cannot coerce to integer` whenever a
+non-identity origin is active, however small the offset; pop to screen space with `origin()`
+before the call and push the same translation back with `origin(x, y)` right after, same as
+any other origin-sensitive draw that has to run while one is pushed.
+
 **The JS heap is 32 KB and most of it is spoken for.** With no creation record, `mdbl.c` gets
 one static 32768-byte block, from the kernel heap when it has room: 6 KB of stack, then slots
 growing down and chunks growing up. When slots run short, a collection hands them whatever the
