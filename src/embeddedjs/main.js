@@ -273,4 +273,4 @@ weather.onStatus(() => {
 });
 
 watch.addEventListener("minutechange", draw);
-watch.addEventListener("hourchange", () => weather.request());
+watch.addEventListener("hourchange", weather.request);
