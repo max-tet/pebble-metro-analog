@@ -34,9 +34,7 @@ const HAND_GAP = 9;
 // Half a tile's height: how far the face slides up on a shake, and the
 // height of the three tiles that slide into view below it.
 const HALF = TILE.fit.h / 2;
-const SLIDE_MS = 300;
 const HOLD_MS = 4000;
-const FRAME_MS = 33; // ~30fps; 17ms (~60fps) costs more battery for no visible gain here
 
 // Own colours, not the tile-above's bg: the face's convention is one colour
 // per tile, and these three slide in as tiles in their own right.
@@ -58,7 +56,6 @@ let sleepSeconds = null;
 let batteryPct = null;
 let connected = watch.connected.app;
 let slideY = 0;
-let animTimer = null;
 let holdTimer = null;
 
 const isoWeek = (d) => {
@@ -228,12 +225,12 @@ const HEART = [
     0b000010000
 ];
 
-// Icons for the RAIN reveal row only (humidity, wind): measured on the
-// emulator to be the most this build's heap has room for. A third pair
-// (calories/sleep or battery/Bluetooth, ~13-15 rows together) reliably hit
-// `memory full` at startup; this pair at 11 rows booted clean, see
-// agents.md's "The JS heap is 32 KB" for the per-element cost this is
-// budgeting against.
+// Icons for RAIN (humidity, wind) and the Bluetooth half of UV: measured
+// on the emulator to be the most this build's heap has room for, even
+// after dropping the slide animation (see reveal/returnDown below) freed
+// up the slots and chunks it used to hold. FIT's calories/sleep pair still
+// doesn't fit; see agents.md's "The JS heap is 32 KB" for the per-element
+// cost this is budgeting against.
 const DROP = [
     0b00100,
     0b00100,
@@ -248,6 +245,15 @@ const WIND = [
     0b1111111,
     0b0000110,
     0b0000100
+];
+const BLUETOOTH = [
+    0b00100,
+    0b00110,
+    0b10101,
+    0b01110,
+    0b10101,
+    0b00110,
+    0b00100
 ];
 
 // Fills each horizontal run of lit pixels with one rectangle.
@@ -282,10 +288,15 @@ const drawFit = () => {
     fitRow(cx, y + 40, HEART, 9, 8, bpm ? String(bpm) : "--");
 };
 
-// One icon+value line, centred as a unit. Two of these stacked fill a
-// reveal tile, the same icon-then-number layout as fitRow/drawFit above,
-// just at label size instead of value size to fit a half-height tile.
+// One icon+value line, centred as a unit, or just centred text when rows
+// is null. Two of these stacked fill a reveal tile, the same icon-then-
+// number layout as fitRow/drawFit above, just at label size instead of
+// value size to fit a half-height tile.
 const iconValueLine = (cx, y, rows, gw, text) => {
+    if (!rows) {
+        centered(text, fontLabel, WHITE, cx, y);
+        return;
+    }
     const gap = 3;
     const left = Math.round(cx - (gw + gap + render.getTextWidth(text, fontLabel)) / 2);
     glyph(rows, gw, left, y + Math.round((fontLabel.height - rows.length) / 2));
@@ -302,8 +313,8 @@ const revealIconTile = (t, top, bottom) => {
 };
 
 // Same two-column "<left> | <right>" text layout the reveal rows used
-// before icons; kept for FIT and UV, which didn't fit an icon pair in the
-// heap budget (see DROP/WIND above).
+// before icons; kept for FIT, which still doesn't fit an icon pair in the
+// heap budget (see DROP/WIND/BLUETOOTH above).
 const revealTextTile = (t, left, right) => {
     render.fillRectangle(t.bg, t.x, t.y, t.w, t.h);
     const lw = render.getTextWidth(left, fontLabel);
@@ -322,9 +333,9 @@ const drawReveal = () => {
     revealIconTile(REVEAL.rain,
         { rows: DROP, gw: 5, text: wx?.humidity != null ? `${wx.humidity}%` : "--%" },
         { rows: WIND, gw: 7, text: wx?.windDir != null && wx?.windSpeed != null ? `${compass(wx.windDir)}${Math.round(wx.windSpeed)}` : "--" });
-    revealTextTile(REVEAL.uv,
-        batteryPct === null ? "--%" : `${batteryPct}%`,
-        connected ? "BT" : "no BT");
+    revealIconTile(REVEAL.uv,
+        { rows: null, gw: 0, text: batteryPct === null ? "--%" : `${batteryPct}%` },
+        { rows: BLUETOOTH, gw: 5, text: connected ? "on" : "off" });
 };
 
 const draw = (event) => {
@@ -345,42 +356,20 @@ const draw = (event) => {
 };
 
 // A shake is the accelerometer's own tap event: there is no separate
-// "shake" gesture in the API. Interrupting mid-slide (another shake while
-// still up, or while sliding back down) just redirects from wherever the
-// face currently is; the animation always runs for SLIDE_MS regardless of
-// remaining distance, which is simple but means an interrupted reversal
-// moves slower than a full slide. Good enough for a UI transition.
-const slideTo = (target, onDone) => {
-    if (animTimer) clearInterval(animTimer);
-    const start = slideY;
-    const distance = target - start;
-    const startTime = Date.now();
-    animTimer = setInterval(() => {
-        const t = Math.min(1, (Date.now() - startTime) / SLIDE_MS);
-        slideY = start + distance * t;
-        draw();
-        if (t >= 1) {
-            clearInterval(animTimer);
-            animTimer = null;
-            onDone?.();
-        }
-    }, FRAME_MS);
-};
-
+// "shake" gesture in the API. No animation: an interpolated slide at this
+// screen's achievable frame rate read as stuttery rather than smooth, so
+// the face just snaps to the revealed position and back.
 const returnDown = () => {
     holdTimer = null;
-    slideTo(0);
+    slideY = 0;
+    draw();
 };
 
 const reveal = () => {
     if (holdTimer) clearTimeout(holdTimer);
-    if (slideY === -HALF) {
-        holdTimer = setTimeout(returnDown, HOLD_MS);
-        return;
-    }
-    slideTo(-HALF, () => {
-        holdTimer = setTimeout(returnDown, HOLD_MS);
-    });
+    slideY = -HALF;
+    draw();
+    holdTimer = setTimeout(returnDown, HOLD_MS);
 };
 
 new Accelerometer({ onTap() { reveal(); } });
