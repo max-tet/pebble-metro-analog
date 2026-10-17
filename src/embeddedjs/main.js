@@ -153,63 +153,61 @@ const drawUv = () => {
     if (wx) centered(`max ${wx.uvMax}`, fontLabel, WHITE, cx, y + 57);
 };
 
-// Small glyphs as pixel art, one line per pixel row, "#" lit and "." not.
-// They are not built from drawCircle, because Poco fills a circle as a pie
-// slice and two overlapping slices leave a seam down the middle at this size.
-// A string literal lives in the mod archive and costs no heap; the nested
-// arrays these replaced cost about 1.9 KB of a heap that has little to spare.
-const WALK = `
-...##....
-...##....
-.........
-..####...
-.#####...
-..####...
-..###....
-..####...
-..##.##..
-.##...##.
-.##....##
-##.....##`;
-const HEART = `
-.###.###.
-#########
-#########
-#########
-.#######.
-..#####..
-...###...
-....#....`;
+// Small glyphs as one bitmask per pixel row, the leftmost pixel in the
+// highest of the glyph's width in bits, 1 lit and 0 not. They are not built
+// from drawCircle, because Poco fills a circle as a pie slice and two
+// overlapping slices leave a seam down the middle at this size.
+//
+// A flat array of numbers costs a few hundred bytes of heap; the nested
+// arrays these replaced cost about 1.9 KB. Pixel-art strings would cost
+// nothing to hold, but XS allocates a String wrapper object for every
+// property access on a string primitive, so decoding one character at a
+// time on every draw buried the heap in garbage and ran the collector three
+// times per frame.
+const WALK = [
+    0b000110000,
+    0b000110000,
+    0b000000000,
+    0b001111000,
+    0b011111000,
+    0b001111000,
+    0b001110000,
+    0b001111000,
+    0b001101100,
+    0b011000110,
+    0b011000011,
+    0b110000011
+];
+const HEART = [
+    0b011101110,
+    0b111111111,
+    0b111111111,
+    0b111111111,
+    0b011111110,
+    0b001111100,
+    0b000111000,
+    0b000010000
+];
 
-const LIT = 35;     // "#"
-const ROW_END = 10; // "\n"
-
-// Fills each horizontal run of lit pixels with one rectangle. Every "\n"
-// starts a new row, including the one that opens the literal, hence row -1.
-const glyph = (art, x, y) => {
-    let row = -1;
-    let col = 0;
-    let runStart = -1;
-    for (let i = 0; i <= art.length; i++) {
-        const c = art.charCodeAt(i);
-        if (c === LIT) {
-            if (runStart < 0) runStart = col;
-        } else if (runStart >= 0) {
-            render.fillRectangle(WHITE, x + runStart, y + row, col - runStart, 1);
-            runStart = -1;
-        }
-        if (c === ROW_END) {
-            row++;
-            col = 0;
-        } else {
-            col++;
+// Fills each horizontal run of lit pixels with one rectangle.
+const glyph = (rows, width, x, y) => {
+    for (let row = 0; row < rows.length; row++) {
+        let runStart = -1;
+        for (let col = 0; col <= width; col++) {
+            const lit = col < width && ((rows[row] >> (width - 1 - col)) & 1) === 1;
+            if (lit) {
+                if (runStart < 0) runStart = col;
+            } else if (runStart >= 0) {
+                render.fillRectangle(WHITE, x + runStart, y + row, col - runStart, 1);
+                runStart = -1;
+            }
         }
     }
 };
 
-const fitRow = (cx, y, art, gw, gy, text) => {
+const fitRow = (cx, y, rows, gw, gy, text) => {
     const left = Math.round(cx - (gw + 4 + render.getTextWidth(text, fontValue)) / 2);
-    glyph(art, left, y + gy);
+    glyph(rows, gw, left, y + gy);
     render.drawText(text, fontValue, WHITE, left + gw + 4, y);
 };
 
