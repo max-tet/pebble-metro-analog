@@ -145,7 +145,11 @@ const drawWeather = () => {
         centered(weather.status() ?? "...", fontLabel, t.tint, cx, y + 52);
         return;
     }
-    drawIcon(render, Math.round(cx), y + 20, WHITE, t.bg, wx.code, wx.isDay);
+    // icons.js draws every weather icon from drawCircle, which has the same
+    // translated-origin bug as drawUv's gauge circle (see HALF/draw).
+    render.origin();
+    drawIcon(render, Math.round(cx), y + 20 + Math.round(slideY), WHITE, t.bg, wx.code, wx.isDay);
+    render.origin(0, Math.round(slideY));
     centered(`${wx.temp}°`, fontValue, WHITE, cx, y + 34);
     drawHighLow(cx, y + 58);
 };

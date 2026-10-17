@@ -31,6 +31,9 @@
       "RAIN",
       "CODE",
       "ISDAY",
+      "HUMIDITY",
+      "WINDSPEED",
+      "WINDDIR",
       "ERR",
       "REQ"
     ],
