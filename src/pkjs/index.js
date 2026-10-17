@@ -15,7 +15,7 @@ function send(dict) {
 function fetchWeather(lat, lon) {
   var url = "https://api.open-meteo.com/v1/forecast" +
     "?latitude=" + lat.toFixed(3) + "&longitude=" + lon.toFixed(3) +
-    "&current=temperature_2m,weather_code,uv_index,is_day" +
+    "&current=temperature_2m,weather_code,uv_index,is_day,relative_humidity_2m,wind_speed_10m,wind_direction_10m" +
     "&daily=temperature_2m_max,temperature_2m_min,uv_index_max" +
     "&hourly=precipitation_probability&forecast_hours=6&forecast_days=1&timezone=auto";
 
@@ -58,6 +58,9 @@ function fetchWeather(lat, lon) {
       RAIN: rain,
       CODE: cur.weather_code,
       ISDAY: cur.is_day,
+      HUMIDITY: Math.round(cur.relative_humidity_2m),
+      WINDSPEED: Math.round(cur.wind_speed_10m),
+      WINDDIR: Math.round(cur.wind_direction_10m),
       ERR: 0
     });
   };
