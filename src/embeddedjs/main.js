@@ -258,9 +258,14 @@ function readHealth() {
 
 readHealth();
 
+// Health fires for every event type, sleep and heart rate variability
+// included, and for every heart rate sample, most of which leave both
+// readings unchanged. Redraw only when something on the face would change.
 watch.addEventListener("health", () => {
+    const shownSteps = steps;
+    const shownBpm = bpm;
     readHealth();
-    draw();
+    if (steps !== shownSteps || bpm !== shownBpm) draw();
 });
 
 weather.onUpdate(data => {
