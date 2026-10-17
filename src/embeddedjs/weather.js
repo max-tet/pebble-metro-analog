@@ -24,7 +24,7 @@ const store = (data) => {
 };
 
 const message = new Message({
-    keys: ["TEMP", "TMAX", "TMIN", "UV", "UVMAX", "RAIN", "CODE", "ISDAY", "ERR", "REQ"],
+    keys: ["TEMP", "TMAX", "TMIN", "UV", "UVMAX", "RAIN", "CODE", "ISDAY", "HUMIDITY", "WINDSPEED", "WINDDIR", "ERR", "REQ"],
     onReadable() {
         const msg = this.read();
         const err = msg.get("ERR");
@@ -42,6 +42,9 @@ const message = new Message({
             rain: msg.get("RAIN"),
             code: msg.get("CODE"),
             isDay: msg.get("ISDAY"),
+            humidity: msg.get("HUMIDITY"),
+            windSpeed: msg.get("WINDSPEED"),
+            windDir: msg.get("WINDDIR"),
             at: Date.now()
         };
         if (data.temp === undefined) return;

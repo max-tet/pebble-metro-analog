@@ -1,5 +1,7 @@
 import Poco from "commodetto/Poco";
 import Health from "pebble/health";
+import Accelerometer from "embedded:sensor/Accelerometer";
+import Battery from "embedded:sensor/Battery";
 import { drawIcon } from "icons";
 import * as weather from "weather";
 
@@ -29,10 +31,33 @@ const CY = TILE.clock.y + TILE.clock.h / 2;
 const R_NUM = 52;
 const HAND_GAP = 9;
 
+// Half a tile's height: how far the face slides up on a shake, and the
+// height of the three tiles that slide into view below it.
+const HALF = TILE.fit.h / 2;
+const SLIDE_MS = 300;
+const HOLD_MS = 4000;
+const FRAME_MS = 33; // ~30fps; 17ms (~60fps) costs more battery for no visible gain here
+
+const REVEAL = {
+    fit:  { x: TILE.fit.x,  y: H, w: TILE.fit.w,  h: HALF, bg: TILE.fit.bg },
+    rain: { x: TILE.rain.x, y: H, w: TILE.rain.w, h: HALF, bg: TILE.rain.bg },
+    uv:   { x: TILE.uv.x,   y: H, w: TILE.uv.w,   h: HALF, bg: TILE.uv.bg }
+};
+
+const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+const compass = (deg) => COMPASS[Math.round(deg / 45) % 8];
+
 let lastDate = new Date();
 let wx = weather.cached();
 let steps = null;
 let bpm = null;
+let calories = null;
+let sleepSeconds = null;
+let batteryPct = null;
+let connected = watch.connected.app;
+let slideY = 0;
+let animTimer = null;
+let holdTimer = null;
 
 const isoWeek = (d) => {
     const t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -74,15 +99,18 @@ const drawClock = (now) => {
     hand(minutes * Math.PI / 30, HAND_GAP, 43, 3);
 };
 
+// Stacked top to bottom as week, year, month/day: on a shake-reveal slide
+// (see HALF) that order clips the week number off first, halves the year,
+// and leaves month/day untouched, in that priority.
 const drawDate = (now) => {
     const t = TILE.date;
     tileBase(t, null);
     const { x, y, w } = t;
     const cx = x + w / 2;
     const md = `${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    centered(String(now.getFullYear()), fontValue, WHITE, cx, y + 4);
-    centered(md, fontValue, WHITE, cx, y + 28);
-    centered(`W${String(isoWeek(now)).padStart(2, "0")}`, fontLabel, WHITE, cx, y + 56);
+    centered(`W${String(isoWeek(now)).padStart(2, "0")}`, fontLabel, WHITE, cx, y + 1);
+    centered(String(now.getFullYear()), fontValue, WHITE, cx, y + 25);
+    centered(md, fontValue, WHITE, cx, y + 48);
 };
 
 const arrow = (x, y, up) => {
@@ -148,7 +176,12 @@ const drawUv = () => {
             Math.round(cx + s * 17), Math.round(cy - c * 17),
             Math.round(cx + s * outer), Math.round(cy - c * outer), WHITE, thick ? 3 : 2);
     }
-    render.drawCircle(WHITE, cx, cy, 14, 0, 360);
+    // drawCircle's pie-slice fill throws "cannot coerce to integer" under a
+    // translated origin (see HALF/draw); pop out to screen space for it and
+    // push the same translation back right after.
+    render.origin();
+    render.drawCircle(WHITE, cx, cy + Math.round(slideY), 14, 0, 360);
+    render.origin(0, Math.round(slideY));
     centered(wx ? String(wx.uv) : "--", fontValue, t.bg, cx, cy - 14);
     if (wx) centered(`max ${wx.uvMax}`, fontLabel, WHITE, cx, y + 57);
 };
@@ -221,10 +254,37 @@ const drawFit = () => {
     fitRow(cx, y + 40, HEART, 9, 8, bpm ? String(bpm) : "--");
 };
 
+// Same two-column "<left> | <right>" text layout for all three reveal
+// tiles; text only, no new glyph arrays, since the XS heap has barely any
+// headroom left for pixel-art data (see agents.md).
+const revealRow = (t, left, right) => {
+    render.fillRectangle(t.bg, t.x, t.y, t.w, t.h);
+    const lw = render.getTextWidth(left, fontLabel);
+    const rw = render.getTextWidth(right, fontLabel);
+    const gap = 3;
+    const px = Math.round(t.x + (t.w - (lw + gap + rw)) / 2);
+    const ty = t.y + Math.round(t.h / 2) - Math.round(fontLabel.height / 2);
+    render.drawText(left, fontLabel, WHITE, px, ty);
+    render.drawText(right, fontLabel, WHITE, px + lw + gap, ty);
+};
+
+const drawReveal = () => {
+    revealRow(REVEAL.fit,
+        calories === null ? "--kcal" : `${Math.round(calories)}kcal`,
+        sleepSeconds === null ? "Z--h" : `Z${(sleepSeconds / 3600).toFixed(1)}h`);
+    revealRow(REVEAL.rain,
+        wx?.humidity != null ? `${wx.humidity}%` : "--%",
+        wx?.windDir != null && wx?.windSpeed != null ? `${compass(wx.windDir)}${Math.round(wx.windSpeed)}` : "--");
+    revealRow(REVEAL.uv,
+        batteryPct === null ? "--%" : `${batteryPct}%`,
+        connected ? "BT" : "no BT");
+};
+
 const draw = (event) => {
     const now = event?.date ?? lastDate;
     lastDate = now;
     render.begin();
+    render.origin(0, Math.round(slideY));
     render.fillRectangle(BLACK, 0, 0, W, H);
     drawClock(now);
     drawDate(now);
@@ -232,8 +292,56 @@ const draw = (event) => {
     drawRain();
     drawUv();
     drawFit();
+    if (slideY) drawReveal();
+    render.origin();
     render.end();
 };
+
+// A shake is the accelerometer's own tap event: there is no separate
+// "shake" gesture in the API. Interrupting mid-slide (another shake while
+// still up, or while sliding back down) just redirects from wherever the
+// face currently is; the animation always runs for SLIDE_MS regardless of
+// remaining distance, which is simple but means an interrupted reversal
+// moves slower than a full slide. Good enough for a UI transition.
+const slideTo = (target, onDone) => {
+    if (animTimer) clearInterval(animTimer);
+    const start = slideY;
+    const distance = target - start;
+    const startTime = Date.now();
+    animTimer = setInterval(() => {
+        const t = Math.min(1, (Date.now() - startTime) / SLIDE_MS);
+        slideY = start + distance * t;
+        draw();
+        if (t >= 1) {
+            clearInterval(animTimer);
+            animTimer = null;
+            onDone?.();
+        }
+    }, FRAME_MS);
+};
+
+const returnDown = () => {
+    holdTimer = null;
+    slideTo(0);
+};
+
+const reveal = () => {
+    if (holdTimer) clearTimeout(holdTimer);
+    if (slideY === -HALF) {
+        holdTimer = setTimeout(returnDown, HOLD_MS);
+        return;
+    }
+    slideTo(-HALF, () => {
+        holdTimer = setTimeout(returnDown, HOLD_MS);
+    });
+};
+
+new Accelerometer({ onTap() { reveal(); } });
+
+const batterySensor = new Battery({ onSample() { batteryPct = this.sample().percent; } });
+batteryPct = batterySensor.sample().percent;
+
+watch.addEventListener("connected", () => { connected = watch.connected.app; });
 
 // The two accessors are not interchangeable, whatever the guide says: a
 // cumulative metric reads 0 from get() and its daily total from query(),
@@ -252,6 +360,8 @@ const reading = (read) => {
 const readHealth = () => {
     steps = reading(() => Health.metric.query({ metric: "step count" }));
     bpm = reading(() => Health.metric.get("heart rate")) || null;
+    calories = reading(() => Health.metric.query({ metric: "active calories" }));
+    sleepSeconds = reading(() => Health.metric.query({ metric: "sleep seconds" }));
 };
 
 readHealth();
@@ -262,8 +372,10 @@ readHealth();
 watch.addEventListener("health", () => {
     const shownSteps = steps;
     const shownBpm = bpm;
+    const shownCalories = calories;
+    const shownSleep = sleepSeconds;
     readHealth();
-    if (steps !== shownSteps || bpm !== shownBpm) draw();
+    if (steps !== shownSteps || bpm !== shownBpm || calories !== shownCalories || sleepSeconds !== shownSleep) draw();
 });
 
 weather.onUpdate(data => {
