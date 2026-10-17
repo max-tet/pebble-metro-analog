@@ -38,10 +38,12 @@ const SLIDE_MS = 300;
 const HOLD_MS = 4000;
 const FRAME_MS = 33; // ~30fps; 17ms (~60fps) costs more battery for no visible gain here
 
+// Own colours, not the tile-above's bg: the face's convention is one colour
+// per tile, and these three slide in as tiles in their own right.
 const REVEAL = {
-    fit:  { x: TILE.fit.x,  y: H, w: TILE.fit.w,  h: HALF, bg: TILE.fit.bg },
-    rain: { x: TILE.rain.x, y: H, w: TILE.rain.w, h: HALF, bg: TILE.rain.bg },
-    uv:   { x: TILE.uv.x,   y: H, w: TILE.uv.w,   h: HALF, bg: TILE.uv.bg }
+    fit:  { x: TILE.fit.x,  y: H, w: TILE.fit.w,  h: HALF, bg: mk(170, 0, 0) },
+    rain: { x: TILE.rain.x, y: H, w: TILE.rain.w, h: HALF, bg: mk(170, 170, 0) },
+    uv:   { x: TILE.uv.x,   y: H, w: TILE.uv.w,   h: HALF, bg: mk(170, 0, 170) }
 };
 
 const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
@@ -226,6 +228,28 @@ const HEART = [
     0b000010000
 ];
 
+// Icons for the RAIN reveal row only (humidity, wind): measured on the
+// emulator to be the most this build's heap has room for. A third pair
+// (calories/sleep or battery/Bluetooth, ~13-15 rows together) reliably hit
+// `memory full` at startup; this pair at 11 rows booted clean, see
+// agents.md's "The JS heap is 32 KB" for the per-element cost this is
+// budgeting against.
+const DROP = [
+    0b00100,
+    0b00100,
+    0b01110,
+    0b11111,
+    0b11111,
+    0b01110
+];
+const WIND = [
+    0b0000100,
+    0b0000110,
+    0b1111111,
+    0b0000110,
+    0b0000100
+];
+
 // Fills each horizontal run of lit pixels with one rectangle.
 const glyph = (rows, width, x, y) => {
     for (let row = 0; row < rows.length; row++) {
@@ -258,10 +282,29 @@ const drawFit = () => {
     fitRow(cx, y + 40, HEART, 9, 8, bpm ? String(bpm) : "--");
 };
 
-// Same two-column "<left> | <right>" text layout for all three reveal
-// tiles; text only, no new glyph arrays, since the XS heap has barely any
-// headroom left for pixel-art data (see agents.md).
-const revealRow = (t, left, right) => {
+// One icon+value line, centred as a unit. Two of these stacked fill a
+// reveal tile, the same icon-then-number layout as fitRow/drawFit above,
+// just at label size instead of value size to fit a half-height tile.
+const iconValueLine = (cx, y, rows, gw, text) => {
+    const gap = 3;
+    const left = Math.round(cx - (gw + gap + render.getTextWidth(text, fontLabel)) / 2);
+    glyph(rows, gw, left, y + Math.round((fontLabel.height - rows.length) / 2));
+    render.drawText(text, fontLabel, WHITE, left + gw + gap, y);
+};
+
+const revealIconTile = (t, top, bottom) => {
+    render.fillRectangle(t.bg, t.x, t.y, t.w, t.h);
+    const cx = t.x + t.w / 2;
+    const lineH = t.h / 2;
+    const ty = Math.round((lineH - fontLabel.height) / 2);
+    iconValueLine(cx, t.y + ty, top.rows, top.gw, top.text);
+    iconValueLine(cx, t.y + lineH + ty, bottom.rows, bottom.gw, bottom.text);
+};
+
+// Same two-column "<left> | <right>" text layout the reveal rows used
+// before icons; kept for FIT and UV, which didn't fit an icon pair in the
+// heap budget (see DROP/WIND above).
+const revealTextTile = (t, left, right) => {
     render.fillRectangle(t.bg, t.x, t.y, t.w, t.h);
     const lw = render.getTextWidth(left, fontLabel);
     const rw = render.getTextWidth(right, fontLabel);
@@ -273,13 +316,13 @@ const revealRow = (t, left, right) => {
 };
 
 const drawReveal = () => {
-    revealRow(REVEAL.fit,
+    revealTextTile(REVEAL.fit,
         calories === null ? "--kcal" : `${Math.round(calories)}kcal`,
         sleepSeconds === null ? "Z--h" : `Z${(sleepSeconds / 3600).toFixed(1)}h`);
-    revealRow(REVEAL.rain,
-        wx?.humidity != null ? `${wx.humidity}%` : "--%",
-        wx?.windDir != null && wx?.windSpeed != null ? `${compass(wx.windDir)}${Math.round(wx.windSpeed)}` : "--");
-    revealRow(REVEAL.uv,
+    revealIconTile(REVEAL.rain,
+        { rows: DROP, gw: 5, text: wx?.humidity != null ? `${wx.humidity}%` : "--%" },
+        { rows: WIND, gw: 7, text: wx?.windDir != null && wx?.windSpeed != null ? `${compass(wx.windDir)}${Math.round(wx.windSpeed)}` : "--" });
+    revealTextTile(REVEAL.uv,
         batteryPct === null ? "--%" : `${batteryPct}%`,
         connected ? "BT" : "no BT");
 };
