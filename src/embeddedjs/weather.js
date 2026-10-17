@@ -7,21 +7,21 @@ let notify = null;
 let notifyStatus = null;
 let lastError = null;
 
-export function cached() {
+export const cached = () => {
     try {
         const stored = JSON.parse(localStorage.getItem("weather"));
         if (stored && Date.now() - stored.at < CACHE_MAX_AGE_MS) return stored;
     } catch (e) {
     }
     return null;
-}
+};
 
-function store(data) {
+const store = (data) => {
     try {
         localStorage.setItem("weather", JSON.stringify(data));
     } catch (e) {
     }
-}
+};
 
 const message = new Message({
     keys: ["TEMP", "TMAX", "TMIN", "UV", "UVMAX", "RAIN", "CODE", "ISDAY", "ERR", "REQ"],
@@ -51,23 +51,23 @@ const message = new Message({
     }
 });
 
-export function request() {
+export const request = () => {
     try {
         message.write(new Map([["REQ", 1]]));
     } catch (e) {
         lastError = "no link";
         notifyStatus?.(lastError);
     }
-}
+};
 
-export function status() {
+export const status = () => {
     return lastError;
-}
+};
 
-export function onUpdate(cb) {
+export const onUpdate = (cb) => {
     notify = cb;
-}
+};
 
-export function onStatus(cb) {
+export const onStatus = (cb) => {
     notifyStatus = cb;
-}
+};

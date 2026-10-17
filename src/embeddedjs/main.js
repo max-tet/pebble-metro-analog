@@ -34,32 +34,32 @@ let wx = weather.cached();
 let steps = null;
 let bpm = null;
 
-function isoWeek(d) {
+const isoWeek = (d) => {
     const t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     t.setDate(t.getDate() - ((t.getDay() + 6) % 7) + 3);
     const jan4 = new Date(t.getFullYear(), 0, 4);
     jan4.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7) + 3);
     return 1 + Math.round((t - jan4) / (7 * 86400000));
-}
+};
 
-function centered(str, font, color, cx, y) {
+const centered = (str, font, color, cx, y) => {
     render.drawText(str, font, color, Math.round(cx - render.getTextWidth(str, font) / 2), y);
-}
+};
 
-function tileBase(t, label) {
+const tileBase = (t, label) => {
     render.fillRectangle(t.bg, t.x, t.y, t.w, t.h);
     if (label) render.drawText(label, fontLabel, WHITE, t.x + 4, t.y + 3);
-}
+};
 
-function hand(angle, inner, outer, thickness) {
+const hand = (angle, inner, outer, thickness) => {
     const s = Math.sin(angle);
     const c = Math.cos(angle);
     render.drawLine(
         Math.round(CX + s * inner), Math.round(CY - c * inner),
         Math.round(CX + s * outer), Math.round(CY - c * outer), WHITE, thickness);
-}
+};
 
-function drawClock(now) {
+const drawClock = (now) => {
     const { x, y, w, h } = TILE.clock;
     render.fillRectangle(BLACK, x, y, w, h);
     for (let i = 1; i <= 12; i++) {
@@ -72,9 +72,9 @@ function drawClock(now) {
     const minutes = now.getMinutes();
     hand((now.getHours() % 12 + minutes / 60) * Math.PI / 6, HAND_GAP, 30, 7);
     hand(minutes * Math.PI / 30, HAND_GAP, 43, 3);
-}
+};
 
-function drawDate(now) {
+const drawDate = (now) => {
     const t = TILE.date;
     tileBase(t, null);
     const { x, y, w } = t;
@@ -83,16 +83,16 @@ function drawDate(now) {
     centered(String(now.getFullYear()), fontValue, WHITE, cx, y + 4);
     centered(md, fontValue, WHITE, cx, y + 28);
     centered(`W${String(isoWeek(now)).padStart(2, "0")}`, fontLabel, WHITE, cx, y + 56);
-}
+};
 
-function arrow(x, y, up) {
+const arrow = (x, y, up) => {
     const stemY = up ? y + 3 : y;
     render.fillRectangle(WHITE, x + 2, stemY, 1, 6);
     for (let i = 0; i < 3; i++)
         render.fillRectangle(WHITE, x + 2 - i, up ? y + i : y + 8 - i, 1 + 2 * i, 1);
-}
+};
 
-function drawHighLow(cx, y) {
+const drawHighLow = (cx, y) => {
     const low = String(wx.tmin);
     const high = String(wx.tmax);
     const lw = render.getTextWidth(low, fontLabel);
@@ -105,9 +105,9 @@ function drawHighLow(cx, y) {
     arrow(px, y + 5, true);
     px += 8;
     render.drawText(high, fontLabel, WHITE, px, y);
-}
+};
 
-function drawWeather() {
+const drawWeather = () => {
     const t = TILE.weather;
     tileBase(t, null);
     const { x, y, w } = t;
@@ -120,18 +120,18 @@ function drawWeather() {
     drawIcon(render, Math.round(cx), y + 20, WHITE, t.bg, wx.code, wx.isDay);
     centered(`${wx.temp}°`, fontValue, WHITE, cx, y + 34);
     drawHighLow(cx, y + 58);
-}
+};
 
-function drawRain() {
+const drawRain = () => {
     const t = TILE.rain;
     tileBase(t, "RAIN");
     const { x, y, w } = t;
     const cx = x + w / 2;
     centered(wx ? `${wx.rain}%` : "--", fontBig, WHITE, cx, y + 20);
     centered("6h", fontLabel, WHITE, cx, y + 52);
-}
+};
 
-function drawUv() {
+const drawUv = () => {
     const t = TILE.uv;
     tileBase(t, null);
     const { x, y, w } = t;
@@ -151,7 +151,7 @@ function drawUv() {
     render.drawCircle(WHITE, cx, cy, 14, 0, 360);
     centered(wx ? String(wx.uv) : "--", fontValue, t.bg, cx, cy - 14);
     if (wx) centered(`max ${wx.uvMax}`, fontLabel, WHITE, cx, y + 57);
-}
+};
 
 // Small glyphs as pixel art, one line per pixel row, "#" lit and "." not.
 // They are not built from drawCircle, because Poco fills a circle as a pie
@@ -186,7 +186,7 @@ const ROW_END = 10; // "\n"
 
 // Fills each horizontal run of lit pixels with one rectangle. Every "\n"
 // starts a new row, including the one that opens the literal, hence row -1.
-function glyph(art, x, y) {
+const glyph = (art, x, y) => {
     let row = -1;
     let col = 0;
     let runStart = -1;
@@ -205,15 +205,15 @@ function glyph(art, x, y) {
             col++;
         }
     }
-}
+};
 
-function fitRow(cx, y, art, gw, gy, text) {
+const fitRow = (cx, y, art, gw, gy, text) => {
     const left = Math.round(cx - (gw + 4 + render.getTextWidth(text, fontValue)) / 2);
     glyph(art, left, y + gy);
     render.drawText(text, fontValue, WHITE, left + gw + 4, y);
-}
+};
 
-function drawFit() {
+const drawFit = () => {
     const t = TILE.fit;
     tileBase(t, null);
     const { x, y, w } = t;
@@ -221,9 +221,9 @@ function drawFit() {
     const count = steps === null ? "--" : (steps >= 10000 ? `${Math.round(steps / 1000)}k` : String(steps));
     fitRow(cx, y + 10, WALK, 9, 6, count);
     fitRow(cx, y + 40, HEART, 9, 8, bpm ? String(bpm) : "--");
-}
+};
 
-function draw(event) {
+const draw = (event) => {
     const now = event?.date ?? lastDate;
     lastDate = now;
     render.begin();
@@ -235,26 +235,26 @@ function draw(event) {
     drawUv();
     drawFit();
     render.end();
-}
+};
 
 // The two accessors are not interchangeable, whatever the guide says: a
 // cumulative metric reads 0 from get() and its daily total from query(),
 // while heart rate is the other way round. Availability is deliberately not
 // consulted, because the emulated board reports the heart rate monitor as
 // unsupported while still delivering readings.
-function reading(read) {
+const reading = (read) => {
     try {
         const value = read();
         return Number.isFinite(value) ? value : null;
     } catch (e) {
         return null;
     }
-}
+};
 
-function readHealth() {
+const readHealth = () => {
     steps = reading(() => Health.metric.query({ metric: "step count" }));
     bpm = reading(() => Health.metric.get("heart rate")) || null;
-}
+};
 
 readHealth();
 
