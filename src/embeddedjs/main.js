@@ -12,94 +12,87 @@ const BLACK = mk(0, 0, 0);
 const WHITE = mk(255, 255, 255);
 
 const TILE = {
-    clock:   { rect: [67, 1, 132, 150] },
-    date:    { rect: [1, 1, 64, 74],     bg: mk(0, 85, 170),  tint: mk(85, 170, 255) },
-    weather: { rect: [1, 77, 64, 74],    bg: mk(170, 85, 0),  tint: mk(255, 170, 85) },
-    rain:    { rect: [1, 153, 64, 74],   bg: mk(0, 170, 170), tint: mk(85, 255, 255) },
-    uv:      { rect: [67, 153, 65, 74],  bg: mk(85, 0, 170),  tint: mk(170, 85, 255) },
-    fit:     { rect: [134, 153, 65, 74], bg: mk(0, 170, 85),  tint: mk(85, 255, 170) }
+    clock:   { x: 67,  y: 1,   w: 132, h: 150 },
+    date:    { x: 1,   y: 1,   w: 64,  h: 74, bg: mk(0, 85, 170),  tint: mk(85, 170, 255) },
+    weather: { x: 1,   y: 77,  w: 64,  h: 74, bg: mk(170, 85, 0),  tint: mk(255, 170, 85) },
+    rain:    { x: 1,   y: 153, w: 64,  h: 74, bg: mk(0, 170, 170), tint: mk(85, 255, 255) },
+    uv:      { x: 67,  y: 153, w: 65,  h: 74, bg: mk(85, 0, 170),  tint: mk(170, 85, 255) },
+    fit:     { x: 134, y: 153, w: 65,  h: 74, bg: mk(0, 170, 85),  tint: mk(85, 255, 170) }
 };
 
 const fontLabel = new render.Font("Gothic-Regular", 14);
 const fontValue = new render.Font("Gothic-Bold", 24);
 const fontBig = new render.Font("Gothic-Bold", 28);
 
-const CX = TILE.clock.rect[0] + TILE.clock.rect[2] / 2;
-const CY = TILE.clock.rect[1] + TILE.clock.rect[3] / 2;
+const CX = TILE.clock.x + TILE.clock.w / 2;
+const CY = TILE.clock.y + TILE.clock.h / 2;
 const R_NUM = 52;
 const HAND_GAP = 9;
-
-const NUMERALS = [];
-for (let i = 1; i <= 12; i++) {
-    const a = i * Math.PI / 6;
-    const label = String(i);
-    NUMERALS.push({
-        label,
-        x: Math.round(CX + Math.sin(a) * R_NUM - render.getTextWidth(label, fontLabel) / 2),
-        y: Math.round(CY - Math.cos(a) * R_NUM - fontLabel.height / 2)
-    });
-}
 
 let lastDate = new Date();
 let wx = weather.cached();
 let steps = null;
 let bpm = null;
 
-function isoWeek(d) {
+const isoWeek = (d) => {
     const t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     t.setDate(t.getDate() - ((t.getDay() + 6) % 7) + 3);
     const jan4 = new Date(t.getFullYear(), 0, 4);
     jan4.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7) + 3);
     return 1 + Math.round((t - jan4) / (7 * 86400000));
-}
+};
 
-function centered(str, font, color, cx, y) {
+const centered = (str, font, color, cx, y) => {
     render.drawText(str, font, color, Math.round(cx - render.getTextWidth(str, font) / 2), y);
-}
+};
 
-function tileBase(t, label) {
-    const [x, y, w, h] = t.rect;
-    render.fillRectangle(t.bg, x, y, w, h);
-    if (label) render.drawText(label, fontLabel, WHITE, x + 4, y + 3);
-    return [x, y, w, h];
-}
+const tileBase = (t, label) => {
+    render.fillRectangle(t.bg, t.x, t.y, t.w, t.h);
+    if (label) render.drawText(label, fontLabel, WHITE, t.x + 4, t.y + 3);
+};
 
-function hand(angle, inner, outer, thickness) {
+const hand = (angle, inner, outer, thickness) => {
     const s = Math.sin(angle);
     const c = Math.cos(angle);
     render.drawLine(
         Math.round(CX + s * inner), Math.round(CY - c * inner),
         Math.round(CX + s * outer), Math.round(CY - c * outer), WHITE, thickness);
-}
+};
 
-function drawClock(now) {
-    const [x, y, w, h] = TILE.clock.rect;
+const drawClock = (now) => {
+    const { x, y, w, h } = TILE.clock;
     render.fillRectangle(BLACK, x, y, w, h);
-    for (let i = 0; i < NUMERALS.length; i++)
-        render.drawText(NUMERALS[i].label, fontLabel, WHITE, NUMERALS[i].x, NUMERALS[i].y);
+    for (let i = 1; i <= 12; i++) {
+        const a = i * Math.PI / 6;
+        const label = String(i);
+        render.drawText(label, fontLabel, WHITE,
+            Math.round(CX + Math.sin(a) * R_NUM - render.getTextWidth(label, fontLabel) / 2),
+            Math.round(CY - Math.cos(a) * R_NUM - fontLabel.height / 2));
+    }
     const minutes = now.getMinutes();
     hand((now.getHours() % 12 + minutes / 60) * Math.PI / 6, HAND_GAP, 30, 7);
     hand(minutes * Math.PI / 30, HAND_GAP, 43, 3);
-}
+};
 
-function drawDate(now) {
+const drawDate = (now) => {
     const t = TILE.date;
-    const [x, y, w] = tileBase(t, null);
+    tileBase(t, null);
+    const { x, y, w } = t;
     const cx = x + w / 2;
     const md = `${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     centered(String(now.getFullYear()), fontValue, WHITE, cx, y + 4);
     centered(md, fontValue, WHITE, cx, y + 28);
     centered(`W${String(isoWeek(now)).padStart(2, "0")}`, fontLabel, WHITE, cx, y + 56);
-}
+};
 
-function arrow(x, y, up) {
+const arrow = (x, y, up) => {
     const stemY = up ? y + 3 : y;
     render.fillRectangle(WHITE, x + 2, stemY, 1, 6);
     for (let i = 0; i < 3; i++)
         render.fillRectangle(WHITE, x + 2 - i, up ? y + i : y + 8 - i, 1 + 2 * i, 1);
-}
+};
 
-function drawHighLow(cx, y) {
+const drawHighLow = (cx, y) => {
     const low = String(wx.tmin);
     const high = String(wx.tmax);
     const lw = render.getTextWidth(low, fontLabel);
@@ -112,11 +105,12 @@ function drawHighLow(cx, y) {
     arrow(px, y + 5, true);
     px += 8;
     render.drawText(high, fontLabel, WHITE, px, y);
-}
+};
 
-function drawWeather() {
+const drawWeather = () => {
     const t = TILE.weather;
-    const [x, y, w] = tileBase(t, null);
+    tileBase(t, null);
+    const { x, y, w } = t;
     const cx = x + w / 2;
     if (!wx) {
         centered("--°", fontValue, WHITE, cx, y + 26);
@@ -126,19 +120,21 @@ function drawWeather() {
     drawIcon(render, Math.round(cx), y + 20, WHITE, t.bg, wx.code, wx.isDay);
     centered(`${wx.temp}°`, fontValue, WHITE, cx, y + 34);
     drawHighLow(cx, y + 58);
-}
+};
 
-function drawRain() {
+const drawRain = () => {
     const t = TILE.rain;
-    const [x, y, w] = tileBase(t, "RAIN");
+    tileBase(t, "RAIN");
+    const { x, y, w } = t;
     const cx = x + w / 2;
     centered(wx ? `${wx.rain}%` : "--", fontBig, WHITE, cx, y + 20);
     centered("6h", fontLabel, WHITE, cx, y + 52);
-}
+};
 
-function drawUv() {
+const drawUv = () => {
     const t = TILE.uv;
-    const [x, y, w] = tileBase(t, null);
+    tileBase(t, null);
+    const { x, y, w } = t;
     const cx = Math.round(x + w / 2);
     const cy = y + 29;
     const rays = wx ? wx.uvMax : 0;
@@ -155,36 +151,77 @@ function drawUv() {
     render.drawCircle(WHITE, cx, cy, 14, 0, 360);
     centered(wx ? String(wx.uv) : "--", fontValue, t.bg, cx, cy - 14);
     if (wx) centered(`max ${wx.uvMax}`, fontLabel, WHITE, cx, y + 57);
-}
+};
 
-// Small glyphs as run-length rows: each pair is a start offset and a width.
-// They are not built from drawCircle, because Poco fills a circle as a pie
-// slice and two overlapping slices leave a seam down the middle at this size.
-const WALK = [[3, 2], [3, 2], [], [2, 4], [1, 5], [2, 4], [2, 3], [2, 4], [2, 2, 5, 2], [1, 2, 6, 2], [1, 2, 7, 2], [0, 2, 7, 2]];
-const HEART = [[1, 3, 5, 3], [0, 9], [0, 9], [0, 9], [1, 7], [2, 5], [3, 3], [4, 1]];
+// Small glyphs as one bitmask per pixel row, the leftmost pixel in the
+// highest of the glyph's width in bits, 1 lit and 0 not. They are not built
+// from drawCircle, because Poco fills a circle as a pie slice and two
+// overlapping slices leave a seam down the middle at this size.
+//
+// A flat array of numbers costs a few hundred bytes of heap; the nested
+// arrays these replaced cost about 1.9 KB. Pixel-art strings would cost
+// nothing to hold, but XS allocates a String wrapper object for every
+// property access on a string primitive, so decoding one character at a
+// time on every draw buried the heap in garbage and ran the collector three
+// times per frame.
+const WALK = [
+    0b000110000,
+    0b000110000,
+    0b000000000,
+    0b001111000,
+    0b011111000,
+    0b001111000,
+    0b001110000,
+    0b001111000,
+    0b001101100,
+    0b011000110,
+    0b011000011,
+    0b110000011
+];
+const HEART = [
+    0b011101110,
+    0b111111111,
+    0b111111111,
+    0b111111111,
+    0b011111110,
+    0b001111100,
+    0b000111000,
+    0b000010000
+];
 
-function glyph(rows, x, y) {
-    for (let i = 0; i < rows.length; i++)
-        for (let j = 0; j < rows[i].length; j += 2)
-            render.fillRectangle(WHITE, x + rows[i][j], y + i, rows[i][j + 1], 1);
-}
+// Fills each horizontal run of lit pixels with one rectangle.
+const glyph = (rows, width, x, y) => {
+    for (let row = 0; row < rows.length; row++) {
+        let runStart = -1;
+        for (let col = 0; col <= width; col++) {
+            const lit = col < width && ((rows[row] >> (width - 1 - col)) & 1) === 1;
+            if (lit) {
+                if (runStart < 0) runStart = col;
+            } else if (runStart >= 0) {
+                render.fillRectangle(WHITE, x + runStart, y + row, col - runStart, 1);
+                runStart = -1;
+            }
+        }
+    }
+};
 
-function fitRow(cx, y, rows, gw, gy, text) {
+const fitRow = (cx, y, rows, gw, gy, text) => {
     const left = Math.round(cx - (gw + 4 + render.getTextWidth(text, fontValue)) / 2);
-    glyph(rows, left, y + gy);
+    glyph(rows, gw, left, y + gy);
     render.drawText(text, fontValue, WHITE, left + gw + 4, y);
-}
+};
 
-function drawFit() {
+const drawFit = () => {
     const t = TILE.fit;
-    const [x, y, w] = tileBase(t, null);
+    tileBase(t, null);
+    const { x, y, w } = t;
     const cx = x + w / 2;
     const count = steps === null ? "--" : (steps >= 10000 ? `${Math.round(steps / 1000)}k` : String(steps));
     fitRow(cx, y + 10, WALK, 9, 6, count);
     fitRow(cx, y + 40, HEART, 9, 8, bpm ? String(bpm) : "--");
-}
+};
 
-function draw(event) {
+const draw = (event) => {
     const now = event?.date ?? lastDate;
     lastDate = now;
     render.begin();
@@ -196,32 +233,37 @@ function draw(event) {
     drawUv();
     drawFit();
     render.end();
-}
+};
 
 // The two accessors are not interchangeable, whatever the guide says: a
 // cumulative metric reads 0 from get() and its daily total from query(),
 // while heart rate is the other way round. Availability is deliberately not
 // consulted, because the emulated board reports the heart rate monitor as
 // unsupported while still delivering readings.
-function reading(read) {
+const reading = (read) => {
     try {
         const value = read();
         return Number.isFinite(value) ? value : null;
     } catch (e) {
         return null;
     }
-}
+};
 
-function readHealth() {
+const readHealth = () => {
     steps = reading(() => Health.metric.query({ metric: "step count" }));
     bpm = reading(() => Health.metric.get("heart rate")) || null;
-}
+};
 
 readHealth();
 
+// Health fires for every event type, sleep and heart rate variability
+// included, and for every heart rate sample, most of which leave both
+// readings unchanged. Redraw only when something on the face would change.
 watch.addEventListener("health", () => {
+    const shownSteps = steps;
+    const shownBpm = bpm;
     readHealth();
-    draw();
+    if (steps !== shownSteps || bpm !== shownBpm) draw();
 });
 
 weather.onUpdate(data => {
@@ -234,4 +276,4 @@ weather.onStatus(() => {
 });
 
 watch.addEventListener("minutechange", draw);
-watch.addEventListener("hourchange", () => weather.request());
+watch.addEventListener("hourchange", weather.request);

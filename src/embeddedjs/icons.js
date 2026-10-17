@@ -1,18 +1,18 @@
 // Weather icons drawn with Poco primitives, so the build needs no image resources.
 // Each icon is drawn inside a 24x24 box centred on (cx, cy).
 
-function cloud(render, cx, cy, fg) {
+const cloud = (render, cx, cy, fg) => {
     render.drawCircle(fg, cx - 5, cy, 5, 0, 360);
     render.drawCircle(fg, cx + 3, cy - 3, 7, 0, 360);
     render.fillRectangle(fg, cx - 6, cy, 15, 5);
-}
+};
 
-function drops(render, cx, cy, fg, length) {
+const drops = (render, cx, cy, fg, length) => {
     for (let dx = -5; dx <= 5; dx += 5)
         render.drawLine(cx + dx, cy + 7, cx + dx - 2, cy + 7 + length, fg, 2);
-}
+};
 
-export function drawIcon(render, cx, cy, fg, bg, code, isDay) {
+export const drawIcon = (render, cx, cy, fg, bg, code, isDay) => {
     if (code === 0) {
         if (isDay) {
             render.drawCircle(fg, cx, cy, 6, 0, 360);
@@ -64,4 +64,4 @@ export function drawIcon(render, cx, cy, fg, bg, code, isDay) {
     render.drawLine(cx + 2, cy + 3, cx - 3, cy + 9, fg, 2);
     render.drawLine(cx - 3, cy + 9, cx + 3, cy + 9, fg, 2);
     render.drawLine(cx + 3, cy + 9, cx - 2, cy + 14, fg, 2);
-}
+};
