@@ -157,16 +157,58 @@ function drawUv() {
     if (wx) centered(`max ${wx.uvMax}`, fontLabel, WHITE, cx, y + 57);
 }
 
-// Small glyphs as run-length rows: each pair is a start offset and a width.
+// Small glyphs as pixel art, one line per pixel row, "#" lit and "." not.
 // They are not built from drawCircle, because Poco fills a circle as a pie
 // slice and two overlapping slices leave a seam down the middle at this size.
-const WALK = [[3, 2], [3, 2], [], [2, 4], [1, 5], [2, 4], [2, 3], [2, 4], [2, 2, 5, 2], [1, 2, 6, 2], [1, 2, 7, 2], [0, 2, 7, 2]];
-const HEART = [[1, 3, 5, 3], [0, 9], [0, 9], [0, 9], [1, 7], [2, 5], [3, 3], [4, 1]];
+// A string literal lives in the mod archive and costs no heap; the nested
+// arrays these replaced cost about 1.9 KB of a heap that has little to spare.
+const WALK = `
+...##....
+...##....
+.........
+..####...
+.#####...
+..####...
+..###....
+..####...
+..##.##..
+.##...##.
+.##....##
+##.....##`;
+const HEART = `
+.###.###.
+#########
+#########
+#########
+.#######.
+..#####..
+...###...
+....#....`;
 
-function glyph(rows, x, y) {
-    for (let i = 0; i < rows.length; i++)
-        for (let j = 0; j < rows[i].length; j += 2)
-            render.fillRectangle(WHITE, x + rows[i][j], y + i, rows[i][j + 1], 1);
+const LIT = 35;     // "#"
+const ROW_END = 10; // "\n"
+
+// Fills each horizontal run of lit pixels with one rectangle. Every "\n"
+// starts a new row, including the one that opens the literal, hence row -1.
+function glyph(art, x, y) {
+    let row = -1;
+    let col = 0;
+    let runStart = -1;
+    for (let i = 0; i <= art.length; i++) {
+        const c = art.charCodeAt(i);
+        if (c === LIT) {
+            if (runStart < 0) runStart = col;
+        } else if (runStart >= 0) {
+            render.fillRectangle(WHITE, x + runStart, y + row, col - runStart, 1);
+            runStart = -1;
+        }
+        if (c === ROW_END) {
+            row++;
+            col = 0;
+        } else {
+            col++;
+        }
+    }
 }
 
 function fitRow(cx, y, rows, gw, gy, text) {
