@@ -112,6 +112,15 @@ in a `ModdableCreationRecord` in `mdbl.c`; `pebble logs` then prints chunk and s
 second. Add `import Debug from "debug"` and call `Debug.gc()` before reading a number, or it
 includes garbage. Neither change belongs in a commit.
 
+That "six extra tables" headroom was measured before the shake-reveal feature (accelerometer,
+battery sensor, connected listener, reveal drawing) added its own slots and chunks. With the
+feature's slide-animation code still in place (a `setInterval` loop and its closures), two
+tables totalling 13 rows reliably hit `memory full` at startup, and 11 combined rows was the
+largest combination that booted. Dropping the animation in favour of an instant snap (it read as
+stuttery at the achievable frame rate anyway) freed enough slots and chunks to fit 18 rows across
+three tables; a fourth pair bringing the total to 33 still overflowed. Re-measure rather than
+trusting any of these numbers once more code is added.
+
 The record also takes `stack`, `slot` and `chunk` sizes. When their sum exceeds 32768, the
 firmware drops the shared static block and allocates fixed slot and chunk heaps separately:
 stack and slots from the kernel heap while a 32 KB allowance lasts, chunks and anything beyond
